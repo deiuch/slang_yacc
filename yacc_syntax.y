@@ -593,7 +593,7 @@ PrimaryExpression   : LPAREN ExpressionSeq RPAREN  // Tuple or parenthesized exp
                     | INIT
                     | THIS
                     | SUPER
-                    ;  // Just IDENTIFIER has lower precedence than PostfixExpression "routine call"
+                    ;  // Just IDENTIFIER has same precedence as PostfixExpression "routine call"
 
 // Primitives //////////////////////////////////////////////////////////////////////////////////////////////////////////
 

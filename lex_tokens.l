@@ -1,21 +1,6 @@
-%{
-#include <string.h>
-#include "y.tab.h"
-
-extern YYSTYPE yylval;
-
-void skip_block_comment();
-char *get_char_literal();
-char *get_string_literal();
-
-// TODO: Unicode
-// following could be helpful (not in LEX)
-/*
-D                   \p{Nd}
-L                   \p{L}\p{M}*+
-WS                  \p{Z}
-*/
-%}
+%x COMMENT
+%x CHAR
+%x STR
 
 B                   [01]
 O                   {B}|[2-7]
@@ -33,12 +18,32 @@ L                   [A-Za-z]
 
 WS                  [ \f\n\r\t\v]
 
+%{
+// TODO: Unicode
+// following could be helpful (not in LEX)
+/*
+D                   \p{Nd}
+L                   \p{L}\p{M}*+
+WS                  \p{Z}
+*/
+
+#include <string.h>
+#include "y.tab.h"
+
+extern YYSTYPE yylval;
+
+char *get_char_literal();
+char *get_string_literal();
+int comment_ctr;
+%}
+
 %%
 
-"//"[^\n]*\n        { /* ignore inline comment */ }
-"/*"                { skip_block_comment(); }
-"*/"                { return BLOCK_COMMENT_END; }
-"\\\n"              { /* ignore escaped new line */ }
+"//"(\\\n|[^\n])*/\n { /* ignore inline comment */ }
+"/*"                { BEGIN COMMENT; comment_ctr = 1; }
+<COMMENT>"/*"       { ++comment_ctr; }
+<COMMENT>"*/"       { --comment_ctr; if (comment_ctr < 1) BEGIN INITIAL; }
+<COMMENT>(.|\n)     { /* ignore comment content */ }
 
 "is abstract"       { return IS_ABSTRACT; }
 "and then"          { return AND_THEN; }
@@ -95,7 +100,12 @@ WS                  [ \f\n\r\t\v]
 {L}({L}|{D}|_|$)* {
     yylval.text = (char *) malloc(strlen(yytext));
     strcpy(yylval.text, yytext);
-    return IDENTIFIER;  // TODO: TYPE_IDENTIFIER
+    // TODO: TYPE_IDENTIFIER recognition, next goes testing solution
+    if (yylval.text[0] >= 'A' && yylval.text[0] <= 'Z') {
+        return TYPE_IDENTIFIER;
+    } else {
+        return IDENTIFIER;
+    }
 }
 
 {BIN}|{OCT}|{DEC}|{HEX} {
@@ -155,21 +165,69 @@ WS                  [ \f\n\r\t\v]
 "~"                 { return TILDE; }
 
 {WS}                { /* ignore whitespaces */ }
-.                   { return *yytext; }
+
+.*\\\n {
+    /* remove escaped newline and check again */
+    int i;
+    //char *yycopy = strdup(yytext);  // recommended, but here it is unnecessary
+    for (i = yyleng - 3; i >= 0; --i) {
+        //unput(yycopy[i]);
+        unput(yytext[i]);
+    }
+    //free(yycopy);
+}
+
+. {
+    fprintf(stderr, "Unrecognized character: %s\n", yytext);
+    exit(EXIT_FAILURE);
+}
 
 %%
 
-void skip_block_comment()
-{
-    while (yylex() != BLOCK_COMMENT_END);
+/* TODO: end, test and replace current literal definitions
+"'" {
+    BEGIN CHAR;
+    // TODO: string init
 }
+"\"" {
+    BEGIN STR;
+    // TODO: string init
+}
+
+<CHAR,STR>"\\a"     { *str++ = '\a'; }
+<CHAR,STR>"\\b"     { *str++ = '\b'; }
+<CHAR,STR>"\\f"     { *str++ = '\f'; }
+<CHAR,STR>"\\n"     { *str++ = '\n'; }
+<CHAR,STR>"\\r"     { *str++ = '\r'; }
+<CHAR,STR>"\\t"     { *str++ = '\t'; }
+<CHAR,STR>"\\v"     { *str++ = '\v'; }
+<CHAR,STR>"\\\\"    { *str++ = '\\'; }
+<CHAR,STR>(.|\n)    { *str++ = *yytext; }
+
+<CHAR>"\\'"         { *str++ = '\''; }
+<STR>"\\\""         { *str++ = '"'; }
+
+<CHAR>' {
+    BEGIN INITIAL;
+    // TODO: string finalization
+    yylval.text = str;
+    return CHAR_LITERAL;
+}
+
+<STR>\" {
+    BEGIN INITIAL;
+    // TODO: string finalization
+    yylval.text = str;
+    return STRING_LITERAL;
+}
+*/
 
 char *get_char_literal()
 {
     char *res = get_string_literal();
     if (strlen(res) > 1)  // TODO: Unicode
     {
-        fprintf(stderr, "error: not a char '%s'\n", res);
+        fprintf(stderr, "Error: not a char '%s'\n", res);
         exit(EXIT_FAILURE);
     }
     return res;
@@ -188,6 +246,7 @@ char *get_string_literal()
             ++i;
             switch (yytext[i])
             {
+                case 'a':  to_put = '\a'; break;
                 case 'b':  to_put = '\b'; break;
                 case 'f':  to_put = '\f'; break;
                 case 'n':  to_put = '\n'; break;
@@ -204,7 +263,7 @@ char *get_string_literal()
                     // TODO: 4 hex
                     break;
                 default:
-                    fprintf(stderr, "error: unknown escape '\\%c'\n", yytext[i]);
+                    fprintf(stderr, "Error: unknown escape '\\%c'\n", yytext[i]);
                     exit(EXIT_FAILURE);
             }
         }
@@ -510,5 +569,5 @@ int main()
         }
         printf("\n");
     }
-    return 1;
+    return EXIT_FAILURE;
 }*/

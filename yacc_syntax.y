@@ -20,7 +20,7 @@ char const *yyerror(const char *str);
     5) shift/reduce of ObjectDeclaration beginning (ConstOpt)
     6) shift/reduce of Routine beginning (PureOrSafeOpt and OverrideOpt)
     7) shift/reduce of coincident Routine and Object
-    8) reduce/reduce of the rule Type:IDENTIFIER
+    8) reduce/reduce of the rule Type:IDENTIFIER // TODO: analyze other solutions
     9) reduce/reduce of Tuple declaration (if defined like sequence of declarations and expressions)
     10) shift/reduce of routine-operator with ObjectDeclaration ending with Expression
     11) TODO: shift/reduce of CaseStatement (absence of the beginning of this statement)
@@ -30,8 +30,6 @@ char const *yyerror(const char *str);
 */
 
 %expect 0  // For expected amount of conflicts
-
-%token BLOCK_COMMENT_END  // For LEX
 
 /*
     This nonterminal was introduced in order to solve
@@ -145,7 +143,7 @@ char const *yyerror(const char *str);
 %left LESS_LESS GREATER_GREATER                           // Bitwise shift
 %left PLUS      MINUS                                     // Additive operations
 %left ASTERISK  SLASH           BACKSLASH                 // Multiplicative operations
-%left LOWER_THAN_LPAREN  // Pseudo-token for prioritizing the routine call in PostfixExpression
+%nonassoc LOWER_THAN_LPAREN  // Pseudo-token for prioritizing the routine call in PostfixExpression
 %left LPAREN
 // Higher priority
 
@@ -251,11 +249,11 @@ Predicate           :             Expression
 // Unit ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 /*
-    All the endings (duplicating identifiers)
-    of Units/Routines were discarded
-    because of lots of conflicts with them and
-    ability to express them as comments instead.
-*/
+ *  All the endings (duplicating identifiers)
+ *  of Units/Routines were discarded
+ *  because of lots of conflicts with them and
+ *  ability to express them as comments instead.
+ */
 
 UnitWithCompoundName: UnitSpecifierOpt UNIT IDENTIFIER DOT CompoundName UnitBody
                     ;  // Just CompoundName makes reduce/reduce with usual UnitDeclaration
@@ -429,8 +427,17 @@ TypeSeq             :                   Type
                     | TypeSeq SEPARATOR Type
                     ;
 
+/*
+ *  This rule is the only place where the
+ *  conflicting IDENTIFIER is replaced by
+ *  TYPE_IDENTIFIER. The solution for the
+ *  lexical analyzer might be triggering
+ *  when some special token found (COLON,
+ *  MINUS_GREATER etc.) and waiting till
+ *  Type non-terminal will be found.
+ */
 Type                : TypeTuple
-                //  | IDENTIFIER  // reduce/reduce with rule "IdentifierSeq: IDENTIFIER". TODO: ID with every Type?
+                //  | IDENTIFIER  // reduce/reduce with rule "IdentifierSeq: IDENTIFIER".
                 //  | IDENTIFIER LBRACKET TypeOrExpressionSeq RBRACKET  // No problem, just to be consistent
                     | TYPE_IDENTIFIER
                     | TYPE_IDENTIFIER LBRACKET TypeOrExpressionSeq RBRACKET
@@ -446,11 +453,12 @@ TypeOrDeclarationSeq:                                TypeOrDeclaration
                     | TypeOrDeclarationSeq SEPARATOR TypeOrDeclaration
                     ;
 
+// TODO: discuss if TYPE_IDENTIFIER required instead of IDENTIFIER
 TypeOrDeclaration   : Type
                     | IDENTIFIER COLON RefOrValOpt Type
                     | IDENTIFIER                        IS Expression
                     | IDENTIFIER COLON RefOrValOpt Type IS Expression
-                    ;  // Usual ObjectDeclaration causes lots of conflicts
+                    ;  // Usual ObjectDeclaration causes lots of conflicts, we took only part of it
 
 TypeOrExpressionSeq :                               Type
                     |                               Expression
@@ -473,6 +481,8 @@ Statement           : RoutineCall
                     | CheckStatement
                     | ReturnStatement
                     | SEPARATOR
+
+                    | error { fprintf(stderr, "Error in the statement has been found!\n"); }  // TODO
                     ;
 
 RoutineCall         : PostfixExpression %prec LOWER_THAN_LPAREN
@@ -647,7 +657,7 @@ OverridableOperator : COLON_EQUALS
                     | CARET
                     | VERTICAL
                     | TILDE
-                    ;  // If any operator becomes overridable - add it here TODO: check the list
+                    ;  // If any operator becomes overridable - add it here  // TODO: check the list
 
 %%
 
@@ -660,5 +670,5 @@ int main()
 {
     yylval.text = (char *) malloc(0);
     yyparse();
-    return 0;
+    return EXIT_SUCCESS;
 }

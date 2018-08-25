@@ -341,7 +341,7 @@ InitRoutineDecl     : INIT FormalGenericsOpt RoutineParameters RoutineSpecs Init
 
 OperatorRoutineDecl : SEPARATOR        OpRoutineIdentifier FormalGenericsOpt RoutineParameters RoutineSpecs RoutineBody
                     | PureSafeOverride OpRoutineIdentifier FormalGenericsOpt RoutineParameters RoutineSpecs RoutineBody
-                    ;  // SEPARATOR stays as solution of shift/reduce with ObjectDeclaration with initializer
+                    ;  // TODO: lower priority than the PostfixExpression
 
 OpRoutineIdentifier : OverridableOperator
                     | OverridableOperator ALIAS IDENTIFIER
@@ -482,7 +482,7 @@ Statement           : RoutineCall
                     | ReturnStatement
                     | SEPARATOR
 
-                    | error { fprintf(stderr, "Error in the statement has been found!\n"); }  // TODO
+                    | error SEPARATOR { fprintf(stderr, "Error in the statement has been found!\n"); }  // TODO
                     ;
 
 RoutineCall         : PostfixExpression %prec LOWER_THAN_LPAREN
@@ -597,13 +597,18 @@ PostfixExpression   : PrimaryExpression
 PrimaryExpression   : LPAREN ExpressionSeq RPAREN  // Tuple or parenthesized expression
                 //  | LPAREN Expression    RPAREN  // reduce/reduce with tuple of one element
                     | Literal
-                    | IDENTIFIER %prec LPAREN
+                    | IDENTIFIER %prec LOWER_THAN_LPAREN
+                      /*
+                       * This rule has lower precedence comparing
+                       * to the RoutineDeclaration rule when
+                       * the LPAREN is found next.
+                       */
                     | NEW IDENTIFIER
                     | OLD IDENTIFIER
                     | INIT
                     | THIS
                     | SUPER
-                    ;  // Just IDENTIFIER has same precedence as PostfixExpression "routine call"
+                    ;
 
 // Primitives //////////////////////////////////////////////////////////////////////////////////////////////////////////
 

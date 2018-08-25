@@ -1,6 +1,5 @@
 %{
 #include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
 
 extern int yylex();
@@ -143,8 +142,9 @@ char const *yyerror(const char *str);
 %left LESS_LESS GREATER_GREATER                           // Bitwise shift
 %left PLUS      MINUS                                     // Additive operations
 %left ASTERISK  SLASH           BACKSLASH                 // Multiplicative operations
+%left DOT                                                 // TODO: comment
 %nonassoc LOWER_THAN_LPAREN  // Pseudo-token for prioritizing the routine call in PostfixExpression
-%left LPAREN
+%right LPAREN
 // Higher priority
 
 %start CompilationUnit
@@ -155,11 +155,7 @@ CompilationUnit     : UseDirectiveSeqOpt ProgramEntitySeqOpt
                     ;
 
 ProgramEntitySeqOpt : /* empty */
-                    | ProgramEntitySeq
-                    ;
-
-ProgramEntitySeq    :                  ProgramEntity
-                    | ProgramEntitySeq ProgramEntity
+                    | ProgramEntitySeqOpt ProgramEntity
                     ;
 
 ProgramEntity       : Statement
@@ -175,11 +171,7 @@ Declaration         : UnitDeclaration
 // Use directive ***
 
 UseDirectiveSeqOpt  : /* empty */
-                    | UseDirectiveSeq
-                    ;
-
-UseDirectiveSeq     :                 UseDirective
-                    | UseDirectiveSeq UseDirective
+                    | UseDirectiveSeqOpt UseDirective
                     ;
 
 UseDirective        : USE       UseItemSeq
@@ -274,11 +266,7 @@ UnitSpecifierOpt    : /* empty */
                     ;
 
 UnitDirectiveSeqOpt : /* empty */
-                    | UnitDirectiveSeq
-                    ;
-
-UnitDirectiveSeq    :                  UnitDirective
-                    | UnitDirectiveSeq UnitDirective
+                    | UnitDirectiveSeqOpt UnitDirective
                     ;
 
 UnitDirective       : InheritanceDirective
@@ -482,7 +470,7 @@ Statement           : RoutineCall
                     | ReturnStatement
                     | SEPARATOR
 
-                    | error SEPARATOR { fprintf(stderr, "Error in the statement has been found!\n"); }  // TODO
+                    | error { fprintf(stderr, "Error in the statement has been found!\n"); }  // TODO
                     ;
 
 RoutineCall         : PostfixExpression %prec LOWER_THAN_LPAREN
@@ -552,6 +540,7 @@ ExpressionSeq       :                         Expression
                     ;
 
 Expression          : UnaryExpression
+                    | Expression DOT             Expression
                     | Expression ASTERISK        Expression
                     | Expression SLASH           Expression
                     | Expression BACKSLASH       Expression
@@ -577,7 +566,7 @@ Expression          : UnaryExpression
                     | Expression DOT_DOT         Expression
                     ;  // Adding an operator here - fill the precedence table at the top
 
-UnaryExpression     : PostfixExpression %prec LOWER_THAN_LPAREN
+UnaryExpression     : PostfixExpression %prec LPAREN
                     | NOT         UnaryExpression
                     | TILDE       UnaryExpression
                     | PLUS        UnaryExpression
@@ -587,22 +576,21 @@ UnaryExpression     : PostfixExpression %prec LOWER_THAN_LPAREN
                     ;  // Just PostfixExpression has lower precedence than itself because of possible "routine call"
 
 PostfixExpression   : PrimaryExpression
-                    | PostfixExpression DOT IDENTIFIER
-                    | PostfixExpression LPAREN               RPAREN
-                    | PostfixExpression LPAREN ExpressionSeq RPAREN
+                    | PostfixExpression LPAREN               RPAREN %prec LPAREN
+                    | PostfixExpression LPAREN ExpressionSeq RPAREN %prec LPAREN
                     | PostfixExpression PLUS_PLUS
                     | PostfixExpression MINUS_MINUS
                     ;
 
-PrimaryExpression   : LPAREN ExpressionSeq RPAREN  // Tuple or parenthesized expression
+PrimaryExpression   : LPAREN ExpressionSeq RPAREN %prec LOWER_THAN_LPAREN  // Tuple or parenthesized expression
                 //  | LPAREN Expression    RPAREN  // reduce/reduce with tuple of one element
                     | Literal
-                    | IDENTIFIER %prec LOWER_THAN_LPAREN
                       /*
                        * This rule has lower precedence comparing
                        * to the RoutineDeclaration rule when
                        * the LPAREN is found next.
                        */
+                    | IDENTIFIER %prec LOWER_THAN_LPAREN
                     | NEW IDENTIFIER
                     | OLD IDENTIFIER
                     | INIT
@@ -674,6 +662,5 @@ char const *yyerror(const char *str)
 int main()
 {
     yylval.text = (char *) malloc(0);
-    yyparse();
-    return EXIT_SUCCESS;
+    return yyparse();
 }

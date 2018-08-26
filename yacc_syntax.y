@@ -13,7 +13,7 @@
     11) TODO: shift/reduce of CaseStatement (absence of the beginning of this statement)
     12) shift/reduce of "++", "--", "+", "-" and "(" as operations with a set of use cases
         (lambda as Expression removed)
-    13) shift/reduce of LPAREN after the Expression
+    13) TODO: shift/reduce of LPAREN after the Expression
 */
 
 %{

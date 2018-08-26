@@ -144,7 +144,7 @@ char const *yyerror(const char *str);
 %left LESS_LESS GREATER_GREATER                           // Bitwise shift
 %left PLUS      MINUS                                     // Additive operations
 %left ASTERISK  SLASH           BACKSLASH                 // Multiplicative operations
-%left DOT                                                 // TODO: comment
+%left DOT                                                 // Object member access
 %nonassoc LOWER_THAN_LPAREN  // Pseudo-token for prioritizing the routine call in PostfixExpression
 %right LPAREN
 // Higher priority

@@ -24,13 +24,13 @@ extern int yylex();
 char const *yyerror(const char *str);
 %}
 
-%union {
-    char *text;
-}
+%expect 0  // For expected amount of conflicts
 
 %start CompilationUnit
 
-%expect 0  // For expected amount of conflicts
+%union {
+    char *text;
+}
 
 /*
     This nonterminal was introduced in order to solve
@@ -131,6 +131,8 @@ char const *yyerror(const char *str);
 %token CARET
 %token VERTICAL
 %token TILDE
+
+// TODO: %type declarations
 
 // Lower priority
 %left DOT_DOT                                             // Value generator

@@ -1,15 +1,3 @@
-%{
-#include <stdio.h>
-#include <string.h>
-
-extern int yylex();
-char const *yyerror(const char *str);
-%}
-
-%union {
-    char *text;
-}
-
 /*
     Short major problems history:
     1) shift/reduce with list of AnonymousRoutine (list inside list)
@@ -27,6 +15,20 @@ char const *yyerror(const char *str);
         (lambda as Expression removed)
     13) shift/reduce of LPAREN after the Expression
 */
+
+%{
+#include <stdio.h>
+#include <string.h>
+
+extern int yylex();
+char const *yyerror(const char *str);
+%}
+
+%union {
+    char *text;
+}
+
+%start CompilationUnit
 
 %expect 0  // For expected amount of conflicts
 
@@ -146,8 +148,6 @@ char const *yyerror(const char *str);
 %nonassoc LOWER_THAN_LPAREN  // Pseudo-token for prioritizing the routine call in PostfixExpression
 %right LPAREN
 // Higher priority
-
-%start CompilationUnit
 
 %%
 

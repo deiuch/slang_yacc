@@ -164,7 +164,7 @@ int comment_ctr;
 "|"                 { return VERTICAL; }
 "~"                 { return TILDE; }
 
-{WS}                { /* ignore whitespaces */ }
+{WS}                { /* skip over blanks */ }
 
 .*\\\n {
     /* remove escaped newline and check again */
